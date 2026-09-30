@@ -54,6 +54,6 @@ Open [http://localhost:8501](http://localhost:8501) in your browser!
 ```
 
 ---
-Made by Abhinav Rastogi
 ## 🤝 License
 Distributed under the MIT License.
+By Abhinav Rastogi
