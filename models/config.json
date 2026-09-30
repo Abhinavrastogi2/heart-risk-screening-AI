@@ -1,0 +1,56 @@
+{
+  "home_features": [
+    "age",
+    "sex",
+    "cp",
+    "trestbps",
+    "exang",
+    "chol",
+    "fbs"
+  ],
+  "clinic_features": [
+    "age",
+    "sex",
+    "cp",
+    "trestbps",
+    "exang",
+    "chol",
+    "fbs",
+    "restecg",
+    "thalch",
+    "oldpeak",
+    "slope"
+  ],
+  "home_threshold": 0.43,
+  "clinic_threshold": 0.44,
+  "categories": {
+    "sex": [
+      "Female",
+      "Male"
+    ],
+    "cp": [
+      "asymptomatic",
+      "atypical angina",
+      "non-anginal",
+      "typical angina"
+    ],
+    "restecg": [
+      "lv hypertrophy",
+      "normal",
+      "st-t abnormality"
+    ],
+    "slope": [
+      "downsloping",
+      "flat",
+      "upsloping"
+    ],
+    "exang": [
+      "False",
+      "True"
+    ],
+    "fbs": [
+      "False",
+      "True"
+    ]
+  }
+}

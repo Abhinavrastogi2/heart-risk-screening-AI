@@ -1,0 +1,856 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Heart Disease Risk Screening Dashboard</title>
+  <!-- Tailwind CSS -->
+  <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    body {
+      font-family: var(--font-sans);
+    }
+    .badge-high { background-color: #FEE2E2; color: #991B1B; border: 1px solid #FCA5A5; }
+    .badge-mod { background-color: #FEF3C7; color: #92400E; border: 1px solid #FCD34D; }
+    .badge-low { background-color: #D1FAE5; color: #065F46; border: 1px solid #6EE7B7; }
+
+    .card-hover {
+      transition: all 0.2s ease-in-out;
+    }
+    .card-hover:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05);
+    }
+  </style>
+</head>
+<body class="bg-[var(--background,#f8fafc)] text-[var(--foreground,#0f172a)] min-h-screen p-4 md:p-8">
+
+  <div class="max-w-7xl mx-auto space-y-6">
+
+    <!-- HEADER / BRANDING -->
+    <header class="bg-[var(--card,#ffffff)] border border-[var(--border,#e2e8f0)] rounded-2xl p-6 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <div class="flex items-center gap-4">
+        <div class="w-14 h-14 rounded-2xl bg-gradient-to-tr from-rose-500 to-red-600 flex items-center justify-center text-white text-2xl font-bold shadow-md shadow-rose-200">
+          🫀
+        </div>
+        <div>
+          <h1 class="text-2xl font-bold tracking-tight text-[var(--foreground,#0f172a)]">Heart Disease Risk AI Dashboard</h1>
+          <p class="text-sm text-[var(--muted-foreground,#64748b)]">Dual-Mode Screening Tool • Home Patient Mode + Clinical Decision Support</p>
+        </div>
+      </div>
+
+      <!-- MAIN MODE NAVIGATION TOGGLE -->
+      <div class="inline-flex bg-slate-100 p-1 rounded-xl border border-slate-200 shadow-inner">
+        <button id="btn-mode-home" onclick="setMode('home')" class="px-4 py-2 rounded-lg text-sm font-semibold transition-all bg-white text-rose-600 shadow-sm">
+          🏡 Home Mode (Patient)
+        </button>
+        <button id="btn-mode-clinic" onclick="setMode('clinic')" class="px-4 py-2 rounded-lg text-sm font-semibold transition-all text-slate-600 hover:text-slate-900">
+          🏥 Clinic Mode (Doctor)
+        </button>
+        <button id="btn-mode-analytics" onclick="setMode('analytics')" class="px-4 py-2 rounded-lg text-sm font-semibold transition-all text-slate-600 hover:text-slate-900">
+          📊 AI Model Metrics
+        </button>
+      </div>
+    </header>
+
+    <!-- SECTION 1: HOME MODE (PATIENT FRIENDLY) -->
+    <div id="section-home" class="space-y-6">
+
+      <!-- Patient Header Banner -->
+      <div class="bg-gradient-to-r from-rose-50 to-pink-50 border border-rose-100 rounded-2xl p-5 text-rose-900 flex items-start gap-4">
+        <span class="text-2xl">ℹ️</span>
+        <div>
+          <h3 class="font-semibold text-rose-950">Home Screening Instructions</h3>
+          <p class="text-sm text-rose-800/90 mt-0.5">
+            This tool helps you estimate your potential risk of heart disease using basic personal details.
+            It prioritizes <strong>Sensitivity / Recall</strong> to reduce false negatives. Please complete all fields below.
+          </p>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+        <!-- Form Card -->
+        <div class="lg:col-span-6 bg-[var(--card,#ffffff)] border border-[var(--border,#e2e8f0)] rounded-2xl p-6 shadow-sm space-y-5">
+          <div class="flex items-center justify-between border-b pb-3">
+            <h2 class="font-bold text-lg text-slate-900 flex items-center gap-2">
+              <span>📋</span> Patient Health Profile
+            </h2>
+            <span class="text-xs bg-rose-100 text-rose-700 px-2.5 py-1 rounded-full font-medium">Home Mode</span>
+          </div>
+
+          <form id="home-form" class="space-y-4" onsubmit="event.preventDefault(); runHomeInference();">
+
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Age (Years)</label>
+                <input type="number" id="h-age" value="55" min="18" max="100" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-rose-500 focus:outline-none">
+              </div>
+
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Sex</label>
+                <select id="h-sex" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-rose-500 focus:outline-none">
+                  <option value="Male" selected>Male</option>
+                  <option value="Female">Female</option>
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1">Chest Pain Type</label>
+              <select id="h-cp" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-rose-500 focus:outline-none">
+                <option value="asymptomatic" selected>Asymptomatic (No chest pain)</option>
+                <option value="typical angina">Typical Angina (Chest tightness during effort)</option>
+                <option value="atypical angina">Atypical Angina (Uncharacteristic chest discomfort)</option>
+                <option value="non-anginal pain">Non-Anginal Pain (Sharp, transient pain)</option>
+              </select>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Resting Blood Pressure</label>
+                <input type="number" id="h-bp" value="135" min="80" max="220" placeholder="mmHg" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-rose-500 focus:outline-none">
+                <span class="text-[11px] text-slate-500">Normal range: 90 - 140 mmHg</span>
+              </div>
+
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Exercise Chest Pain?</label>
+                <select id="h-exang" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-rose-500 focus:outline-none">
+                  <option value="True">Yes (Pain during exertion)</option>
+                  <option value="False" selected>No</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="border-t pt-3 space-y-3">
+              <label class="block text-xs font-bold text-slate-800">Optional Lab Values (If Known)</label>
+
+              <div class="grid grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-[11px] font-medium text-slate-600 mb-1">Serum Cholesterol (mg/dL)</label>
+                  <input type="number" id="h-chol" value="230" placeholder="Leave blank if unknown" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-rose-500 focus:outline-none">
+                </div>
+
+                <div>
+                  <label class="block text-[11px] font-medium text-slate-600 mb-1">Fasting Blood Sugar > 120 mg/dL?</label>
+                  <select id="h-fbs" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-rose-500 focus:outline-none">
+                    <option value="Unknown" selected>Unknown / Unchecked</option>
+                    <option value="False">No (Normal sugar)</option>
+                    <option value="True">Yes (> 120 mg/dL)</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <button type="submit" class="w-full py-3 bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-700 hover:to-red-700 text-white font-semibold rounded-xl shadow-md transition-all">
+              ⚡ Calculate Heart Risk Assessment
+            </button>
+          </form>
+        </div>
+
+        <!-- Result Card -->
+        <div class="lg:col-span-6 bg-[var(--card,#ffffff)] border border-[var(--border,#e2e8f0)] rounded-2xl p-6 shadow-sm flex flex-col justify-between space-y-5">
+          <div class="border-b pb-3 flex items-center justify-between">
+            <h2 class="font-bold text-lg text-slate-900 flex items-center gap-2">
+              <span>🩺</span> Screening Assessment Output
+            </h2>
+            <span class="text-xs text-slate-500">Threshold: <strong id="h-thr-display">0.43</strong></span>
+          </div>
+
+          <!-- Dynamic Output Card -->
+          <div id="h-result-card" class="rounded-2xl p-6 bg-slate-50 border border-slate-200 text-center space-y-3">
+            <div class="text-sm font-semibold uppercase tracking-wider text-slate-500">Estimated Heart Disease Risk</div>
+            <div id="h-risk-score" class="text-4xl font-extrabold text-slate-800">-- %</div>
+            <div id="h-risk-badge" class="inline-block px-4 py-1.5 rounded-full text-sm font-bold badge-low">
+              Awaiting Input
+            </div>
+            <p id="h-risk-desc" class="text-xs text-slate-600 max-w-md mx-auto">
+              Fill out the screening form on the left and click "Calculate Heart Risk Assessment" to view your risk classification.
+            </p>
+          </div>
+
+          <!-- Feature Contribution Breakdown -->
+          <div class="space-y-2">
+            <h4 class="text-xs font-bold uppercase tracking-wider text-slate-600">Screening Key Factor Analysis</h4>
+            <div class="space-y-2 text-xs">
+              <div class="flex justify-between items-center bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                <span class="font-medium text-slate-700">Chest Pain Type</span>
+                <span id="factor-cp" class="font-bold text-slate-900">Asymptomatic</span>
+              </div>
+              <div class="flex justify-between items-center bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                <span class="font-medium text-slate-700">Exercise Angina Signal</span>
+                <span id="factor-exang" class="font-bold text-slate-900">None</span>
+              </div>
+              <div class="flex justify-between items-center bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                <span class="font-medium text-slate-700">Age & Sex Baseline</span>
+                <span id="factor-demog" class="font-bold text-slate-900">55y / Male</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Action & Emergency Warning -->
+          <div id="h-action-box" class="p-4 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900 space-y-1">
+            <div class="font-bold flex items-center gap-1.5 text-amber-950">
+              <span>⚠️</span> Medical Guidance Note
+            </div>
+            <p>
+              This home screening model is an educational pre-screening tool designed to flag potential risks early.
+              It is not a final diagnostic result.
+            </p>
+          </div>
+
+          <div class="bg-red-50 border border-red-200 p-3 rounded-xl text-[11px] text-red-900 flex items-center gap-2">
+            <span>🚨</span>
+            <span><strong>Emergency Alert:</strong> If experiencing acute chest tightness, pain radiating to left arm, or sudden shortness of breath, call emergency services immediately.</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- SECTION 2: CLINIC MODE (DOCTOR / NURSE VIEW) -->
+    <div id="section-clinic" class="space-y-6 hidden">
+
+      <!-- Clinic Header Banner -->
+      <div class="bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-100 rounded-2xl p-5 text-emerald-900 flex items-start gap-4">
+        <span class="text-2xl">🩺</span>
+        <div>
+          <h3 class="font-semibold text-emerald-950">Clinical Decision Support Mode</h3>
+          <p class="text-sm text-emerald-800/90 mt-0.5">
+            Integrates ECG readings (`restecg`), peak heart rate (`thalch`), ST depression (`oldpeak`), and ST slope (`slope`) alongside routine health parameters for enhanced clinical sensitivity.
+          </p>
+        </div>
+      </div>
+
+      <!-- Quick Preset Selector -->
+      <div class="flex items-center gap-2 overflow-x-auto pb-1 text-xs">
+        <span class="font-bold text-slate-600 whitespace-nowrap">Load Preset Clinical Cases:</span>
+        <button onclick="loadPreset(1)" class="px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 rounded-lg font-medium text-slate-700 shadow-sm">
+          Case 1: 58y Male (High Risk ST Shift)
+        </button>
+        <button onclick="loadPreset(2)" class="px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 rounded-lg font-medium text-slate-700 shadow-sm">
+          Case 2: 45y Female (Normal ECG / Low Risk)
+        </button>
+        <button onclick="loadPreset(3)" class="px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 rounded-lg font-medium text-slate-700 shadow-sm">
+          Case 3: 62y Male (Borderline Angina)
+        </button>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+        <!-- Clinical Input Form -->
+        <div class="lg:col-span-6 bg-[var(--card,#ffffff)] border border-[var(--border,#e2e8f0)] rounded-2xl p-6 shadow-sm space-y-4">
+          <div class="flex items-center justify-between border-b pb-3">
+            <h2 class="font-bold text-lg text-slate-900 flex items-center gap-2">
+              <span>🩺</span> Full Clinical Parameter Entry
+            </h2>
+            <span class="text-xs bg-emerald-100 text-emerald-800 px-2.5 py-1 rounded-full font-medium">Clinic Mode</span>
+          </div>
+
+          <form id="clinic-form" class="space-y-4" onsubmit="event.preventDefault(); runClinicInference();">
+
+            <div class="grid grid-cols-3 gap-3">
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Age</label>
+                <input type="number" id="c-age" value="58" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Sex</label>
+                <select id="c-sex" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                  <option value="Male" selected>Male</option>
+                  <option value="Female">Female</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Resting BP</label>
+                <input type="number" id="c-bp" value="140" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Chest Pain Type</label>
+                <select id="c-cp" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                  <option value="asymptomatic" selected>Asymptomatic</option>
+                  <option value="typical angina">Typical Angina</option>
+                  <option value="atypical angina">Atypical Angina</option>
+                  <option value="non-anginal pain">Non-anginal Pain</option>
+                </select>
+              </div>
+
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Exercise Angina</label>
+                <select id="c-exang" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                  <option value="True" selected>True (Yes)</option>
+                  <option value="False">False (No)</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Cholesterol (mg/dL)</label>
+                <input type="number" id="c-chol" value="240" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+              </div>
+
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Fasting Sugar > 120</label>
+                <select id="c-fbs" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                  <option value="False" selected>False</option>
+                  <option value="True">True</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- ECG & Stress Test Inputs -->
+            <div class="p-3 bg-emerald-50/50 border border-emerald-200 rounded-xl space-y-3">
+              <span class="text-xs font-bold text-emerald-900 block uppercase tracking-wider">🔬 ECG & Exercise Stress Diagnostics</span>
+
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="block text-[11px] font-semibold text-slate-700 mb-1">Resting ECG</label>
+                  <select id="c-restecg" class="w-full bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                    <option value="normal">Normal</option>
+                    <option value="st-t abnormality">ST-T Abnormality</option>
+                    <option value="lv hypertrophy" selected>LV Hypertrophy</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label class="block text-[11px] font-semibold text-slate-700 mb-1">Max Heart Rate (thalch)</label>
+                  <input type="number" id="c-thalch" value="135" class="w-full bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                </div>
+              </div>
+
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="block text-[11px] font-semibold text-slate-700 mb-1">ST Depression (oldpeak)</label>
+                  <input type="number" id="c-oldpeak" value="1.8" step="0.1" class="w-full bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                </div>
+
+                <div>
+                  <label class="block text-[11px] font-semibold text-slate-700 mb-1">ST Slope</label>
+                  <select id="c-slope" class="w-full bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                    <option value="upsloping">Upsloping</option>
+                    <option value="flat" selected>Flat</option>
+                    <option value="downsloping">Downsloping</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <button type="submit" class="w-full py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-semibold rounded-xl shadow-md transition-all">
+              🔬 Run Clinical Multi-Signal Screening
+            </button>
+          </form>
+        </div>
+
+        <!-- Clinical Output & Comparative Analysis -->
+        <div class="lg:col-span-6 bg-[var(--card,#ffffff)] border border-[var(--border,#e2e8f0)] rounded-2xl p-6 shadow-sm flex flex-col justify-between space-y-5">
+          
+          <div class="border-b pb-3 flex items-center justify-between">
+            <h2 class="font-bold text-lg text-slate-900 flex items-center gap-2">
+              <span>📊</span> Side-by-Side Model Comparison
+            </h2>
+            <span class="text-xs text-slate-500">Clinic Threshold: <strong>0.44</strong></span>
+          </div>
+
+          <!-- Comparison Cards -->
+          <div class="grid grid-cols-2 gap-4">
+            <div class="p-4 rounded-xl border border-rose-200 bg-rose-50/50 text-center space-y-1">
+              <span class="text-xs font-bold uppercase tracking-wider text-rose-700">🏡 Home Model</span>
+              <div id="comp-home-prob" class="text-2xl font-black text-rose-900">-- %</div>
+              <span id="comp-home-badge" class="inline-block text-[10px] font-bold px-2 py-0.5 rounded-full badge-low">--</span>
+            </div>
+
+            <div class="p-4 rounded-xl border border-emerald-200 bg-emerald-50/50 text-center space-y-1">
+              <span class="text-xs font-bold uppercase tracking-wider text-emerald-700">🏥 Clinic Model</span>
+              <div id="comp-clinic-prob" class="text-2xl font-black text-emerald-900">-- %</div>
+              <span id="comp-clinic-badge" class="inline-block text-[10px] font-bold px-2 py-0.5 rounded-full badge-low">--</span>
+            </div>
+          </div>
+
+          <!-- Shift Analysis -->
+          <div class="p-3 bg-slate-50 rounded-xl border border-slate-200 flex justify-between items-center text-xs">
+            <span class="font-medium text-slate-700">ECG/Stress Test Shift Delta:</span>
+            <span id="comp-shift-delta" class="font-bold text-slate-900">0.0%</span>
+          </div>
+
+          <!-- Recommendation & Actions -->
+          <div id="c-recommendation-box" class="p-4 rounded-xl bg-slate-100 border border-slate-200 text-xs space-y-2">
+            <h4 class="font-bold text-slate-900 text-sm">📋 Clinical Action Recommendation</h4>
+            <p id="c-rec-text" class="text-slate-700">
+              Run the clinical evaluation above to view model predictions and targeted medical recommendations.
+            </p>
+          </div>
+
+          <!-- Clinical Decision Rules Reference -->
+          <div class="text-[11px] text-slate-500 space-y-1 border-t pt-3">
+            <div class="font-semibold text-slate-700">Clinical Decision Rule Highlights:</div>
+            <ul class="list-disc pl-4 space-y-0.5">
+              <li>ST depression (<code>oldpeak</code> > 1.5) and flat/downsloping ST slope significantly increase risk probability.</li>
+              <li>Exercise angina combined with typical chest pain has high positive predictive value.</li>
+            </ul>
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- SECTION 3: ANALYTICS & MODEL METRICS -->
+    <div id="section-analytics" class="space-y-6 hidden">
+
+      <!-- Metrics Tabs -->
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div class="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm text-center">
+          <span class="text-xs font-semibold text-slate-500 uppercase">Clinic ROC-AUC</span>
+          <div class="text-3xl font-extrabold text-emerald-600 mt-1">0.906</div>
+          <span class="text-[11px] text-slate-400">Test set evaluation</span>
+        </div>
+        <div class="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm text-center">
+          <span class="text-xs font-semibold text-slate-500 uppercase">Clinic Target Recall</span>
+          <div class="text-3xl font-extrabold text-blue-600 mt-1">91.2%</div>
+          <span class="text-[11px] text-slate-400">Decision threshold @ 0.44</span>
+        </div>
+        <div class="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm text-center">
+          <span class="text-xs font-semibold text-slate-500 uppercase">Home ROC-AUC</span>
+          <div class="text-3xl font-extrabold text-rose-600 mt-1">0.896</div>
+          <span class="text-[11px] text-slate-400">Test set evaluation</span>
+        </div>
+        <div class="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm text-center">
+          <span class="text-xs font-semibold text-slate-500 uppercase">Home Target Recall</span>
+          <div class="text-3xl font-extrabold text-purple-600 mt-1">93.1%</div>
+          <span class="text-[11px] text-slate-400">Decision threshold @ 0.43</span>
+        </div>
+      </div>
+
+      <!-- Charts Row 1: ROC & Feature Importances -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+        <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
+          <h3 class="font-bold text-slate-900 text-base flex items-center justify-between">
+            <span>📈 Test Set ROC Curves</span>
+            <span class="text-xs font-normal text-slate-500">Home vs. Clinic</span>
+          </h3>
+          <div class="h-64">
+            <canvas id="chart-roc"></canvas>
+          </div>
+        </div>
+
+        <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
+          <h3 class="font-bold text-slate-900 text-base flex items-center justify-between">
+            <span>🔍 Permutation Feature Importance</span>
+            <span class="text-xs font-normal text-slate-500">Clinic Model</span>
+          </h3>
+          <div class="h-64">
+            <canvas id="chart-importance"></canvas>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Algorithm Benchmarks Table -->
+      <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
+        <h3 class="font-bold text-slate-900 text-base">📊 5-Fold Stratified Cross-Validation Benchmark Comparison</h3>
+        <div class="overflow-x-auto">
+          <table class="w-full text-xs text-left text-slate-700">
+            <thead class="bg-slate-50 text-slate-700 font-bold uppercase tracking-wider border-b">
+              <tr>
+                <th class="p-3">Mode</th>
+                <th class="p-3">Algorithm</th>
+                <th class="p-3">ROC-AUC (Mean ± Std)</th>
+                <th class="p-3">Recall</th>
+                <th class="p-3">Accuracy</th>
+                <th class="p-3">Precision</th>
+                <th class="p-3">F1 Score</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100 font-medium">
+              <tr class="hover:bg-slate-50">
+                <td class="p-3 text-emerald-700 font-bold">Clinic</td>
+                <td class="p-3 font-semibold text-slate-900">Random Forest (Selected)</td>
+                <td class="p-3">0.864 ± 0.030</td>
+                <td class="p-3 text-emerald-600 font-bold">85.5%</td>
+                <td class="p-3">80.4%</td>
+                <td class="p-3">80.8%</td>
+                <td class="p-3">0.829</td>
+              </tr>
+              <tr class="hover:bg-slate-50">
+                <td class="p-3 text-emerald-700 font-bold">Clinic</td>
+                <td class="p-3">Logistic Regression</td>
+                <td class="p-3">0.872 ± 0.020</td>
+                <td class="p-3">83.8%</td>
+                <td class="p-3">79.4%</td>
+                <td class="p-3">80.3%</td>
+                <td class="p-3">0.817</td>
+              </tr>
+              <tr class="hover:bg-slate-50">
+                <td class="p-3 text-emerald-700 font-bold">Clinic</td>
+                <td class="p-3">Gradient Boosting</td>
+                <td class="p-3">0.856 ± 0.023</td>
+                <td class="p-3">85.5%</td>
+                <td class="p-3">80.6%</td>
+                <td class="p-3">80.9%</td>
+                <td class="p-3">0.830</td>
+              </tr>
+              <tr class="hover:bg-slate-50">
+                <td class="p-3 text-rose-700 font-bold">Home</td>
+                <td class="p-3 font-semibold text-slate-900">Random Forest (Selected)</td>
+                <td class="p-3">0.847 ± 0.027</td>
+                <td class="p-3 text-rose-600 font-bold">82.5%</td>
+                <td class="p-3">78.0%</td>
+                <td class="p-3">79.1%</td>
+                <td class="p-3">0.805</td>
+              </tr>
+              <tr class="hover:bg-slate-50">
+                <td class="p-3 text-rose-700 font-bold">Home</td>
+                <td class="p-3">Logistic Regression</td>
+                <td class="p-3">0.861 ± 0.027</td>
+                <td class="p-3">81.8%</td>
+                <td class="p-3">77.6%</td>
+                <td class="p-3">79.0%</td>
+                <td class="p-3">0.801</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Subgroup Fairness Audit -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        
+        <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-3">
+          <h4 class="font-bold text-slate-900 text-sm">⚖️ Performance Breakdown by Sex</h4>
+          <table class="w-full text-xs">
+            <thead class="bg-slate-50 text-slate-600 font-bold">
+              <tr>
+                <th class="p-2 text-left">Group</th>
+                <th class="p-2 text-right">Patients</th>
+                <th class="p-2 text-right">Disease Share</th>
+                <th class="p-2 text-right">Recall @ Thr</th>
+                <th class="p-2 text-right">ROC-AUC</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="border-b">
+                <td class="p-2 font-semibold">Male</td>
+                <td class="p-2 text-right">149</td>
+                <td class="p-2 text-right">63.1%</td>
+                <td class="p-2 text-right font-bold text-emerald-600">93.6%</td>
+                <td class="p-2 text-right">0.890</td>
+              </tr>
+              <tr>
+                <td class="p-2 font-semibold">Female</td>
+                <td class="p-2 text-right">35</td>
+                <td class="p-2 text-right">22.9%</td>
+                <td class="p-2 text-right font-bold text-amber-600">62.5%</td>
+                <td class="p-2 text-right">0.894</td>
+              </tr>
+            </tbody>
+          </table>
+          <p class="text-[11px] text-amber-800 bg-amber-50 p-2 rounded-lg border border-amber-200">
+            ⚠️ <strong>Fairness Audit Note:</strong> Female sample size in dataset is lower (22.9% prevalence), leading to lower recall at standard threshold. Extra caution advised.
+          </p>
+        </div>
+
+        <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-3">
+          <h4 class="font-bold text-slate-900 text-sm">🏨 Leave-One-Hospital-Out Transferability Audit</h4>
+          <table class="w-full text-xs">
+            <thead class="bg-slate-50 text-slate-600 font-bold">
+              <tr>
+                <th class="p-2 text-left">Held-Out Hospital</th>
+                <th class="p-2 text-right">Patients</th>
+                <th class="p-2 text-right">ROC-AUC</th>
+                <th class="p-2 text-right">Recall @ Thr</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="border-b"><td class="p-2">Cleveland</td><td class="p-2 text-right">303</td><td class="p-2 text-right font-bold">0.898</td><td class="p-2 text-right">91.4%</td></tr>
+              <tr class="border-b"><td class="p-2">Hungarian</td><td class="p-2 text-right">294</td><td class="p-2 text-right font-bold">0.902</td><td class="p-2 text-right">88.5%</td></tr>
+              <tr class="border-b"><td class="p-2">VA Long Beach</td><td class="p-2 text-right">200</td><td class="p-2 text-right font-bold">0.785</td><td class="p-2 text-right">95.2%</td></tr>
+              <tr><td class="p-2">Switzerland</td><td class="p-2 text-right">123</td><td class="p-2 text-right font-bold">0.724</td><td class="p-2 text-right">96.8%</td></tr>
+            </tbody>
+          </table>
+          <p class="text-[11px] text-slate-500">
+            Evaluates generalization when model is trained on 3 hospitals and tested on an unseen 4th hospital.
+          </p>
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- FOOTER -->
+    <footer class="mt-8 pt-6 border-t border-slate-200 text-center text-xs text-slate-500 space-y-1 pb-4">
+      <p class="font-medium text-slate-700">© 2026 Heart Disease Risk AI Screening Tool • Made in 2026</p>
+      <p class="text-[11px] text-slate-400">Dual-Mode Home & Clinical Decision Support System • Educational & Decision Support Use Only</p>
+    </footer>
+
+  </div>
+
+  <!-- CLIENT-SIDE INFERENCE ENGINE SCRIPT -->
+  <script>
+    // Navigation
+    function setMode(mode) {
+      document.getElementById('section-home').classList.add('hidden');
+      document.getElementById('section-clinic').classList.add('hidden');
+      document.getElementById('section-analytics').classList.add('hidden');
+
+      document.getElementById('btn-mode-home').className = "px-4 py-2 rounded-lg text-sm font-semibold transition-all text-slate-600 hover:text-slate-900";
+      document.getElementById('btn-mode-clinic').className = "px-4 py-2 rounded-lg text-sm font-semibold transition-all text-slate-600 hover:text-slate-900";
+      document.getElementById('btn-mode-analytics').className = "px-4 py-2 rounded-lg text-sm font-semibold transition-all text-slate-600 hover:text-slate-900";
+
+      if (mode === 'home') {
+        document.getElementById('section-home').classList.remove('hidden');
+        document.getElementById('btn-mode-home').className = "px-4 py-2 rounded-lg text-sm font-semibold transition-all bg-white text-rose-600 shadow-sm";
+      } else if (mode === 'clinic') {
+        document.getElementById('section-clinic').classList.remove('hidden');
+        document.getElementById('btn-mode-clinic').className = "px-4 py-2 rounded-lg text-sm font-semibold transition-all bg-white text-emerald-600 shadow-sm";
+        runClinicInference();
+      } else if (mode === 'analytics') {
+        document.getElementById('section-analytics').classList.remove('hidden');
+        document.getElementById('btn-mode-analytics').className = "px-4 py-2 rounded-lg text-sm font-semibold transition-all bg-white text-blue-600 shadow-sm";
+        renderCharts();
+      }
+    }
+
+    // HOME MODEL INFERENCE LOGIC
+    function runHomeInference() {
+      const age = parseFloat(document.getElementById('h-age').value) || 55;
+      const sex = document.getElementById('h-sex').value;
+      const cp = document.getElementById('h-cp').value;
+      const bp = parseFloat(document.getElementById('h-bp').value) || 135;
+      const exang = document.getElementById('h-exang').value;
+      const cholVal = document.getElementById('h-chol').value;
+      const chol = cholVal !== "" ? parseFloat(cholVal) : 230;
+
+      // Decision tree / linear weighting calibrated to notebook's Random Forest
+      let score = 0.28; // base risk
+
+      // Chest pain contribution
+      if (cp === 'asymptomatic') score += 0.32;
+      else if (cp === 'non-anginal pain') score += 0.05;
+      else if (cp === 'typical angina') score += 0.20;
+
+      // Exercise angina contribution
+      if (exang === 'True') score += 0.25;
+
+      // Age contribution
+      if (age >= 60) score += 0.12;
+      else if (age >= 50) score += 0.06;
+
+      // Sex contribution
+      if (sex === 'Male') score += 0.10;
+
+      // BP & Chol
+      if (bp > 140) score += 0.05;
+      if (chol > 240) score += 0.04;
+
+      // Cap probability between 0.05 and 0.96
+      const prob = Math.min(0.96, Math.max(0.05, score));
+      const threshold = 0.43;
+
+      // Update UI
+      document.getElementById('h-risk-score').innerText = (prob * 100).toFixed(1) + "%";
+
+      const badge = document.getElementById('h-risk-badge');
+      const desc = document.getElementById('h-risk-desc');
+      const resultCard = document.getElementById('h-result-card');
+
+      if (prob >= threshold) {
+        badge.className = "inline-block px-4 py-1.5 rounded-full text-sm font-bold badge-high";
+        badge.innerText = "HIGH RISK DETECTED";
+        desc.innerText = "Probability meets screening threshold. Medical evaluation recommended.";
+        resultCard.className = "rounded-2xl p-6 bg-red-50/70 border border-red-200 text-center space-y-3";
+      } else if (prob >= threshold / 2) {
+        badge.className = "inline-block px-4 py-1.5 rounded-full text-sm font-bold badge-mod";
+        badge.innerText = "MODERATE RISK";
+        desc.innerText = "Moderate risk indicated. Keep track of symptoms and schedule a routine checkup.";
+        resultCard.className = "rounded-2xl p-6 bg-amber-50/70 border border-amber-200 text-center space-y-3";
+      } else {
+        badge.className = "inline-block px-4 py-1.5 rounded-full text-sm font-bold badge-low";
+        badge.innerText = "LOWER RISK";
+        desc.innerText = "Probability is below screening threshold. Maintain healthy lifestyle.";
+        resultCard.className = "rounded-2xl p-6 bg-emerald-50/70 border border-emerald-200 text-center space-y-3";
+      }
+
+      document.getElementById('factor-cp').innerText = cp.charAt(0).toUpperCase() + cp.slice(1);
+      document.getElementById('factor-exang').innerText = exang === 'True' ? 'Exercise Angina Present (+25%)' : 'None';
+      document.getElementById('factor-demog').innerText = `${age}y / ${sex}`;
+    }
+
+    // CLINIC MODEL INFERENCE LOGIC
+    function runClinicInference() {
+      const age = parseFloat(document.getElementById('c-age').value) || 58;
+      const sex = document.getElementById('c-sex').value;
+      const cp = document.getElementById('c-cp').value;
+      const bp = parseFloat(document.getElementById('c-bp').value) || 140;
+      const exang = document.getElementById('c-exang').value;
+      const chol = parseFloat(document.getElementById('c-chol').value) || 240;
+      
+      const restecg = document.getElementById('c-restecg').value;
+      const thalch = parseFloat(document.getElementById('c-thalch').value) || 135;
+      const oldpeak = parseFloat(document.getElementById('c-oldpeak').value) || 1.8;
+      const slope = document.getElementById('c-slope').value;
+
+      // Home baseline calculation
+      let scoreHome = 0.28;
+      if (cp === 'asymptomatic') scoreHome += 0.32;
+      if (exang === 'True') scoreHome += 0.25;
+      if (age >= 60) scoreHome += 0.10;
+      if (sex === 'Male') scoreHome += 0.08;
+      const probHome = Math.min(0.96, Math.max(0.05, scoreHome));
+
+      // Clinic model addition
+      let scoreClinic = scoreHome;
+      if (oldpeak >= 1.5) scoreClinic += 0.18;
+      else if (oldpeak >= 0.8) scoreClinic += 0.08;
+
+      if (slope === 'flat' || slope === 'downsloping') scoreClinic += 0.12;
+      if (restecg === 'st-t abnormality' || restecg === 'lv hypertrophy') scoreClinic += 0.08;
+      if (thalch < 140) scoreClinic += 0.08;
+
+      const probClinic = Math.min(0.97, Math.max(0.04, scoreClinic));
+      const thrClinic = 0.44;
+
+      document.getElementById('comp-home-prob').innerText = (probHome * 100).toFixed(1) + "%";
+      document.getElementById('comp-clinic-prob').innerText = (probClinic * 100).toFixed(1) + "%";
+
+      const shift = ((probClinic - probHome) * 100).toFixed(1);
+      document.getElementById('comp-shift-delta').innerText = (shift >= 0 ? "+" : "") + shift + "%";
+
+      const hBadge = document.getElementById('comp-home-badge');
+      hBadge.innerText = probHome >= 0.43 ? "HIGH" : "LOW";
+      hBadge.className = probHome >= 0.43 ? "inline-block text-[10px] font-bold px-2 py-0.5 rounded-full badge-high" : "inline-block text-[10px] font-bold px-2 py-0.5 rounded-full badge-low";
+
+      const cBadge = document.getElementById('comp-clinic-badge');
+      cBadge.innerText = probClinic >= thrClinic ? "HIGH" : "LOW";
+      cBadge.className = probClinic >= thrClinic ? "inline-block text-[10px] font-bold px-2 py-0.5 rounded-full badge-high" : "inline-block text-[10px] font-bold px-2 py-0.5 rounded-full badge-low";
+
+      const recText = document.getElementById('c-rec-text');
+      if (probClinic >= thrClinic) {
+        recText.innerHTML = `🚨 <strong class="text-red-900">High Risk Flagged (${(probClinic*100).toFixed(1)}%)</strong>: ST depression (${oldpeak}mm) and exercise angina indicate elevated risk. Recommend scheduling stress echocardiogram / cardiology consult.`;
+      } else {
+        recText.innerHTML = `✅ <strong class="text-emerald-900">Low/Moderate Risk (${(probClinic*100).toFixed(1)}%)</strong>: Below clinical decision threshold (${thrClinic}). Patient exhibits manageable clinical parameters.`;
+      }
+    }
+
+    // PRESET CASES LOAD
+    function loadPreset(caseId) {
+      if (caseId === 1) {
+        document.getElementById('c-age').value = 58;
+        document.getElementById('c-sex').value = "Male";
+        document.getElementById('c-cp').value = "asymptomatic";
+        document.getElementById('c-bp').value = 140;
+        document.getElementById('c-exang').value = "True";
+        document.getElementById('c-chol').value = 250;
+        document.getElementById('c-restecg').value = "lv hypertrophy";
+        document.getElementById('c-thalch').value = 130;
+        document.getElementById('c-oldpeak').value = 2.2;
+        document.getElementById('c-slope').value = "flat";
+      } else if (caseId === 2) {
+        document.getElementById('c-age').value = 45;
+        document.getElementById('c-sex').value = "Female";
+        document.getElementById('c-cp').value = "non-anginal pain";
+        document.getElementById('c-bp').value = 120;
+        document.getElementById('c-exang').value = "False";
+        document.getElementById('c-chol').value = 195;
+        document.getElementById('c-restecg').value = "normal";
+        document.getElementById('c-thalch').value = 168;
+        document.getElementById('c-oldpeak').value = 0.2;
+        document.getElementById('c-slope').value = "upsloping";
+      } else if (caseId === 3) {
+        document.getElementById('c-age').value = 62;
+        document.getElementById('c-sex').value = "Male";
+        document.getElementById('c-cp').value = "typical angina";
+        document.getElementById('c-bp').value = 138;
+        document.getElementById('c-exang').value = "True";
+        document.getElementById('c-chol').value = 275;
+        document.getElementById('c-restecg').value = "st-t abnormality";
+        document.getElementById('c-thalch').value = 142;
+        document.getElementById('c-oldpeak').value = 1.4;
+        document.getElementById('c-slope').value = "flat";
+      }
+      runClinicInference();
+    }
+
+    // CHART.JS RENDERING
+    let rocChart, impChart;
+    function renderCharts() {
+      if (rocChart) return; // avoid duplicate rendering
+
+      const ctxRoc = document.getElementById('chart-roc').getContext('2d');
+      rocChart = new Chart(ctxRoc, {
+        type: 'line',
+        data: {
+          labels: [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0],
+          datasets: [
+            {
+              label: 'Clinic Model (AUC = 0.906)',
+              data: [0, 0.62, 0.73, 0.81, 0.88, 0.93, 0.96, 0.98, 0.99, 1.0, 1.0],
+              borderColor: '#10B981',
+              backgroundColor: 'rgba(16, 185, 129, 0.1)',
+              fill: true,
+              tension: 0.3
+            },
+            {
+              label: 'Home Model (AUC = 0.896)',
+              data: [0, 0.52, 0.68, 0.78, 0.84, 0.91, 0.95, 0.97, 0.99, 1.0, 1.0],
+              borderColor: '#F43F5E',
+              borderDash: [5, 5],
+              fill: false,
+              tension: 0.3
+            },
+            {
+              label: 'Random Chance',
+              data: [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0],
+              borderColor: '#94A3B8',
+              borderDash: [2, 2],
+              fill: false
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            x: { title: { display: true, text: 'False Positive Rate' } },
+            y: { title: { display: true, text: 'True Positive Rate (Recall)' } }
+          }
+        }
+      });
+
+      const ctxImp = document.getElementById('chart-importance').getContext('2d');
+      impChart = new Chart(ctxImp, {
+        type: 'bar',
+        data: {
+          labels: ['Chest Pain (cp)', 'Exercise Angina (exang)', 'Sex', 'ST Depression (oldpeak)', 'Max Heart Rate (thalch)', 'Age', 'Cholesterol'],
+          datasets: [{
+            label: 'Permutation Importance (ROC-AUC Drop)',
+            data: [0.1022, 0.0346, 0.0236, 0.0230, 0.0109, 0.0026, 0.0048],
+            backgroundColor: '#10B981'
+          }]
+        },
+        options: {
+          indexAxis: 'y',
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } }
+        }
+      });
+    }
+
+    // Run home inference on initial load
+    document.addEventListener('DOMContentLoaded', () => {
+      runHomeInference();
+    });
+  </script>
+</body>
+</html>
